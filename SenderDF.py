@@ -52,7 +52,6 @@ def send_gbn(sock):
 
 # Receive thread for stop-n-wait
 def receive_snw(sock, pkt):
-    sock.send(pkt, RECEIVER_ADDR)
     ack = False
     while not ack:
         try:
