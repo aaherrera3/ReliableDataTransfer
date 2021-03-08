@@ -52,7 +52,16 @@ def send_gbn(sock):
 
 # Receive thread for stop-n-wait
 def receive_snw(sock, pkt):
-    # Fill here to handle acks        
+    sock.send(pkt, RECEIVER_ADDR)
+    ack = False
+    while not ack:
+        try:
+            ack, addr = sock.recv(PACKET_SIZE)
+            ack = True
+            print("Packet acknoledged----")
+        except:
+            sock.send(pkt, RECEIVER_ADDR)
+        
     return
 
 # Receive thread for GBN
