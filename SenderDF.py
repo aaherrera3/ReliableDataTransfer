@@ -55,11 +55,11 @@ def receive_snw(sock, pkt):
     ack = False
     while not ack:
         try:
-            ack, addr = sock.recv(PACKET_SIZE)
+            ack, addr = udt.recv(sock)
             ack = True
             print("Packet acknoledged----")
         except:
-            sock.send(pkt, RECEIVER_ADDR)
+            udt.send(pkt, sock, RECEIVER_ADDR)
         
     return
 
