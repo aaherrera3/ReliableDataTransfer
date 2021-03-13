@@ -34,7 +34,7 @@ def receive_snw(sock):
        pkt, senderaddr = udt.recv(sock)
        seq, data = packet.extract(pkt)
        endStr = data.decode()
-       f.write(data.decode)
+       f.write(endStr)
      
 
 
