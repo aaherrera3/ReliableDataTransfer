@@ -44,19 +44,9 @@ def send_snw(sock):
         udt.send(pkt, sock, RECEIVER_ADDR)
         seq = seq+1
         time.sleep(TIMEOUT_INTERVAL)
+        receive_snw(sock,pkt)
     pkt = packet.make(seq, "END".encode())
     udt.send(pkt, sock, RECEIVER_ADDR)
-	# # Fill out the code here
-    # seq = 0
-    # while(seq < 20):
-    #     data = generate_payload(40).encode()
-    #     pkt = packet.make(seq, data)
-    #     print("Sending seq# ", seq, "\n")
-    #     udt.send(pkt, sock, RECEIVER_ADDR)
-    #     seq = seq+1
-    #     time.sleep(TIMEOUT_INTERVAL)
-    # pkt = packet.make(seq, "END".encode())
-    # udt.send(pkt, sock, RECEIVER_ADDR)
 
 # Send using GBN protocol
 def send_gbn(sock):
@@ -65,8 +55,20 @@ def send_gbn(sock):
 
 # Receive thread for stop-n-wait
 def receive_snw(sock, pkt):
-    # Fill here to handle acks
+    sock.settimeout(0.5)
+    acknowledged = False
+    while not acknowledged:
+        try:
+            ACK, senderaddr = udt.recv(sock)
+            ack, data = packet.extract(ACK)
+            print("Confirm seq#: ", ack, "\n")
+            acknowledged = True
+        except socket.timeout:
+            print("Resending")
+            udt.send(pkt, sock, RECEIVER_ADDR)
     return
+
+
 
 # Receive thread for GBN
 def receive_gbn(sock):
