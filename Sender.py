@@ -8,6 +8,7 @@ import udt
 import random
 from timer import Timer
 
+
 # Some already defined parameters
 PACKET_SIZE = 512
 RECEIVER_ADDR = ('localhost', 8080)
@@ -15,6 +16,8 @@ SENDER_ADDR = ('localhost', 9090)
 SLEEP_INTERVAL = 0.05 # (In seconds)
 TIMEOUT_INTERVAL = 0.5
 WINDOW_SIZE = 4
+num_sent_packets = 0
+num_resent_packets = 0
 
 # You can use some shared resources over the two threads
 # base = 0
@@ -33,17 +36,28 @@ def generate_payload(length=10):
 
 # Send using Stop_n_wait protocol
 def send_snw(sock):
-	# Fill out the code here
     seq = 0
-    while(seq < 20):
-        data = generate_payload(40).encode()
-        pkt = packet.make(seq, data)
+    global num_sent_packets
+    global num_resent_packets
+    start_time = time.time()
+    f = open(input("FileName: "), 'rb')
+    while True:
+        data = f.read(PACKET_SIZE)
+        if not data:
+            break
+        pkt = packet.make(seq,data)
         print("Sending seq# ", seq, "\n")
         udt.send(pkt, sock, RECEIVER_ADDR)
+        num_sent_packets += 1
         seq = seq+1
         time.sleep(TIMEOUT_INTERVAL)
+        receive_snw(sock,pkt)
     pkt = packet.make(seq, "END".encode())
     udt.send(pkt, sock, RECEIVER_ADDR)
+    end_time = time.time()
+    print("Total number of packets sent:", num_sent_packets + num_resent_packets, "\n")
+    print("Number of packets resent:", num_resent_packets, "\n")
+    print("Time taken to complete file transfer:", end_time - start_time, "seconds")
 
 # Send using GBN protocol
 def send_gbn(sock):
@@ -52,8 +66,22 @@ def send_gbn(sock):
 
 # Receive thread for stop-n-wait
 def receive_snw(sock, pkt):
-    # Fill here to handle acks        
+    global num_resent_packets
+    sock.settimeout(0.5)
+    acknowledged = False
+    while not acknowledged:
+        try:
+            ACK, senderaddr = udt.recv(sock)
+            ack, data = packet.extract(ACK)
+            print("Confirm seq#: ", ack, "\n")
+            acknowledged = True
+        except socket.timeout:
+            print("Resending")
+            udt.send(pkt, sock, RECEIVER_ADDR)
+            num_resent_packets += 1
     return
+
+
 
 # Receive thread for GBN
 def receive_gbn(sock):
@@ -74,5 +102,3 @@ if __name__ == '__main__':
 
     send_snw(sock)
     sock.close()
-
-
