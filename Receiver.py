@@ -21,11 +21,16 @@ def receive_sr(sock, windowsize):
 # Receive packets from the sender w/ Stop-n-wait protocol
 def receive_snw(sock):
    endStr = ''
+   f = open("receiver_file_x.txt", "w")
    while endStr!='END':
-       pkt, senderaddr = udt.recv(sock)
-       seq, data = packet.extract(pkt)
-       endStr = data.decode()
-       print("From: ", senderaddr, ", Seq# ", seq, endStr)
+        pkt, senderaddr = udt.recv(sock)
+        seq, data = packet.extract(pkt)
+        endStr = data.decode()
+        if endStr != "END":
+            f.write(endStr)
+        print("From: ", senderaddr, ", Seq# ", seq,"Data ", endStr, "\n")
+        pkt = packet.make(seq,data)
+        udt.send(pkt, sock, senderaddr)
 
 
 # Main function

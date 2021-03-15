@@ -54,8 +54,9 @@ def send_snw(sock):
         receive_snw(sock,pkt)
     pkt = packet.make(seq, "END".encode())
     udt.send(pkt, sock, RECEIVER_ADDR)
+    num_sent_packets += 1
     end_time = time.time()
-    print("Total number of packets sent:", num_sent_packets + num_resent_packets, "\n")
+    print("Total number of packets sent:", num_sent_packets, "\n")
     print("Number of packets resent:", num_resent_packets, "\n")
     print("Time taken to complete file transfer:", end_time - start_time, "seconds")
 
