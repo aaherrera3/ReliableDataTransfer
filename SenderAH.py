@@ -14,7 +14,7 @@ RECEIVER_ADDR = ('localhost', 8080)
 SENDER_ADDR = ('localhost', 9090)
 SLEEP_INTERVAL = 0.05 # (In seconds)
 TIMEOUT_INTERVAL = 0.5
-WINDOW_SIZE = 4
+WINDOW_SIZE = 5
 
 # You can use some shared resources over the two threads
 # base = 0
@@ -50,8 +50,28 @@ def send_snw(sock):
 
 # Send using GBN protocol
 def send_gbn(sock):
+    seq = 0
+    packets = []
+    f = open(input("File Name: "), 'rb')
+    data = f.read(PACKET_SIZE)
+    while data:
+        pkt = packet.make(seq,data)
+        packets.append(pkt)
+        data = f.read(PACKET_SIZE)
+        seq += 1
+    pkt = packet.make(seq, "END".encode())
+    packets.append(pkt)
+    
+    while packets:
+        packetsSent = []
+        for x in range(WINDOW_SIZE):
+            pkt = packets.pop(0)
+            packetsSent.append(pkt)
+            udt.send(pkt, sock, RECEIVER_ADDR)
+            time.sleep(TIMEOUT_INTERVAL)
+            receive_gbn(sock,packetsSent)
 
-    return
+        
 
 # Receive thread for stop-n-wait
 def receive_snw(sock, pkt):
@@ -71,8 +91,21 @@ def receive_snw(sock, pkt):
 
 
 # Receive thread for GBN
-def receive_gbn(sock):
-    # Fill here to handle acks
+def receive_gbn(sock, sent):
+    sock.settimeout(0.5*50)
+    acknowledged = len(sent)
+    count = 0
+    while count != acknowledged:
+        try:
+            for x in range(len(sent)):
+                ACK, senderaddr = udt.recv(sock)
+                ack, data = packet.extract(ACK)
+                print("Confirm seq#: ", ack, "\n")
+                acknowledged += 1
+        except socket.timeout:
+            print("Resending")
+            for x in sent:
+                udt.send(x, sock, RECEIVER_ADDR)
     return
 
 
@@ -86,8 +119,8 @@ if __name__ == '__main__':
     sock.bind(SENDER_ADDR)
 
     # filename = sys.argv[1]
-
-    send_snw(sock)
+    send_gbn(sock)
+    #send_snw(sock)
     sock.close()
 
 
