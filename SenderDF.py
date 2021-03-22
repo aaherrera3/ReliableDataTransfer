@@ -106,7 +106,7 @@ def receive_gbn(sock, sent):
     global received_packets
     global num_resent_packets
     global current_ack 
-    sock.settimeout(0.5*50)
+    sock.settimeout(0.5)
     acknowledged = len(sent)
     count = 0
     while count != acknowledged:
@@ -119,10 +119,7 @@ def receive_gbn(sock, sent):
                     received_packets.append(ack)
                     sent.remove(ACK)
                     current_ack += 1
-                    count += 1
-                
-                
-                
+                    count += 1                
                     
         except socket.timeout:
             print("Resending")
