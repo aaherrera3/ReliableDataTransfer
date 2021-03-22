@@ -15,6 +15,8 @@ SENDER_ADDR = ('localhost', 9090)
 SLEEP_INTERVAL = 0.05 # (In seconds)
 TIMEOUT_INTERVAL = 0.5
 WINDOW_SIZE = 4
+num_sent_packets = 0
+num_resent_packets = 0
 
 # You can use some shared resources over the two threads
 # base = 0
@@ -50,8 +52,11 @@ def send_snw(sock):
 
 # Send using GBN protocol
 def send_gbn(sock):
+    global num_sent_packets
+    global num_resent_packets
     seq = 0
     packets = []
+    start_time = time.time()
     f = open(input("File Name: "), 'rb')
     data = f.read(PACKET_SIZE)
     while data:
@@ -68,8 +73,13 @@ def send_gbn(sock):
             pkt = packets.pop(0)
             packetsSent.append(pkt)
             udt.send(pkt, sock, RECEIVER_ADDR)
+            num_sent_packets += 1
             time.sleep(TIMEOUT_INTERVAL)
         receive_gbn(sock,packetsSent)
+    end_time = time.time()
+    print("Total number of packets sent:", num_sent_packets, "\n")
+    print("Number of packets resent:", num_resent_packets, "\n")
+    print("Time taken to complete file transfer:", end_time - start_time, "seconds")
     return
         
 
@@ -89,10 +99,13 @@ def receive_snw(sock, pkt):
     return
 
 received_packets = []
+current_ack = 0
 
 # Receive thread for GBN
 def receive_gbn(sock, sent):
     global received_packets
+    global num_resent_packets
+    global current_ack 
     sock.settimeout(0.5*50)
     acknowledged = len(sent)
     count = 0
@@ -101,17 +114,21 @@ def receive_gbn(sock, sent):
             for x in range(len(sent)):
                 ACK, senderaddr = udt.recv(sock)
                 ack, data = packet.extract(ACK)
-                if ack not in received_packets:
+                if ack not in received_packets and current_ack == ack:
                     print("Confirm seq#: ", ack, "\n")
                     received_packets.append(ack)
-                count += 1
-                sent = sent[1:]
+                    sent.remove(ACK)
+                    current_ack += 1
+                    count += 1
+                
+                
                 
                     
         except socket.timeout:
             print("Resending")
             for x in sent:
                 udt.send(x, sock, RECEIVER_ADDR)
+                num_resent_packets += 1
     return
 
 

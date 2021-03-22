@@ -7,17 +7,20 @@ import udt
 RECEIVER_ADDR = ('localhost', 8080)
 
 received_packets = []
+count = 0
 
 # Receive packets from the sender w/ GBN protocol
 def receive_gbn(sock):
    endStr = ''
    global received_packets
+   global count
    f = open("receiver_bio.txt", "w")
    while endStr!='END':
         pkt, senderaddr = udt.recv(sock)
         seq, data = packet.extract(pkt)
-        if seq not in received_packets:
+        if seq not in received_packets and count == seq:
             received_packets.append(seq)
+            count += 1
             endStr = data.decode()
             if endStr != "END":
                 f.write(endStr)
