@@ -33,39 +33,85 @@ def generate_payload(length=10):
 
 # Send using Stop_n_wait protocol
 def send_snw(sock):
-	# Fill out the code here
     seq = 0
-    while(seq < 20):
-        data = generate_payload(40).encode()
-        pkt = packet.make(seq, data)
+    f = open(input("FileName: "), 'rb')
+    while True:
+        data = f.read(PACKET_SIZE)
+        if not data:
+            break
+        pkt = packet.make(seq,data)
         print("Sending seq# ", seq, "\n")
         udt.send(pkt, sock, RECEIVER_ADDR)
         seq = seq+1
         time.sleep(TIMEOUT_INTERVAL)
+        receive_snw(sock,pkt)
     pkt = packet.make(seq, "END".encode())
     udt.send(pkt, sock, RECEIVER_ADDR)
 
 # Send using GBN protocol
 def send_gbn(sock):
-
+    seq = 0
+    packets = []
+    f = open(input("File Name: "), 'rb')
+    data = f.read(PACKET_SIZE)
+    while data:
+        pkt = packet.make(seq,data)
+        packets.append(pkt)
+        data = f.read(PACKET_SIZE)
+        seq += 1
+    pkt = packet.make(seq, "END".encode())
+    packets.append(pkt)
+    
+    while packets:
+        packetsSent = []
+        for x in range(WINDOW_SIZE):
+            pkt = packets.pop(0)
+            packetsSent.append(pkt)
+            udt.send(pkt, sock, RECEIVER_ADDR)
+            time.sleep(TIMEOUT_INTERVAL)
+        receive_gbn(sock,packetsSent)
     return
+        
 
 # Receive thread for stop-n-wait
 def receive_snw(sock, pkt):
-    ack = False
-    while not ack:
+    sock.settimeout(0.5)
+    acknowledged = False
+    while not acknowledged:
         try:
-            ack, addr = udt.recv(sock)
-            ack = True
-            print("Packet acknoledged----")
-        except:
+            ACK, senderaddr = udt.recv(sock)
+            ack, data = packet.extract(ACK)
+            print("Confirm seq#: ", ack, "\n")
+            acknowledged = True
+        except socket.timeout:
+            print("Resending")
             udt.send(pkt, sock, RECEIVER_ADDR)
-        
     return
 
+received_packets = []
+
 # Receive thread for GBN
-def receive_gbn(sock):
-    # Fill here to handle acks
+def receive_gbn(sock, sent):
+    global received_packets
+    sock.settimeout(0.5*50)
+    acknowledged = len(sent)
+    count = 0
+    while count != acknowledged:
+        try:
+            for x in range(len(sent)):
+                ACK, senderaddr = udt.recv(sock)
+                ack, data = packet.extract(ACK)
+                if ack not in received_packets:
+                    print("Confirm seq#: ", ack, "\n")
+                    received_packets.append(ack)
+                count += 1
+                sent = sent[1:]
+                
+                    
+        except socket.timeout:
+            print("Resending")
+            for x in sent:
+                udt.send(x, sock, RECEIVER_ADDR)
     return
 
 
@@ -79,8 +125,8 @@ if __name__ == '__main__':
     sock.bind(SENDER_ADDR)
 
     # filename = sys.argv[1]
-
-    send_snw(sock)
+    send_gbn(sock)
+    #send_snw(sock)
     sock.close()
 
 
